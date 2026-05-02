@@ -7,15 +7,12 @@ pipeline {
         RELEASE = "nginx-release"
     }
 
-    tools {
-        sonarQubeScanner 'SonarScanner'
-    }
 
     stages {
 
         stage('Checkout') {
             steps {
-                git 'https://github.com/your-username/nginx-demo.git'
+                git  branch: 'Development' , url: 'https://github.com/satyam4853/nginx.git'
             }
         }
 
