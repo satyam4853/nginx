@@ -3,19 +3,41 @@ pipeline {
 
     environment {
         IMAGE_NAME = "satyam4853/nginx-demo"
+        TAG = "${BUILD_NUMBER}"
+        RELEASE = "nginx-release"
+    }
+
+    tools {
+        sonarQubeScanner 'SonarScanner'
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git branch: 'Development' , url: 'https://github.com/satyam4853/nginx.git'
+                git 'https://github.com/your-username/nginx-demo.git'
+            }
+        }
+
+        stage('SonarQube Scan') {
+            steps {
+                withSonarQubeEnv('sonar-server') {
+                    sh 'sonar-scanner'
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t $IMAGE_NAME .'
+                sh 'docker build -t $IMAGE_NAME:$TAG .'
             }
         }
 
@@ -33,16 +55,16 @@ pipeline {
 
         stage('Push Image') {
             steps {
-                sh 'docker push $IMAGE_NAME'
+                sh 'docker push $IMAGE_NAME:$TAG'
             }
         }
 
-        stage('Deploy Container') {
+        stage('Deploy via Helm') {
             steps {
                 sh '''
-                docker stop nginx-demo || true
-                docker rm nginx-demo || true
-                docker run -d -p 8080:80 --name nginx-demo $IMAGE_NAME
+                helm upgrade --install $RELEASE ./nginx-chart \
+                  --set image.repository=$IMAGE_NAME \
+                  --set image.tag=$TAG
                 '''
             }
         }
